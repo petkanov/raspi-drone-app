@@ -25,7 +25,6 @@ class DataReceiver (threading.Thread):
               command = proto.Command()
               command.ParseFromString(data)
 
-              print(str(command))
               self.drone.executeCommand(command)
               
           except Exception as e:

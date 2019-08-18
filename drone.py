@@ -8,6 +8,7 @@ class Drone:
         self.drone = connect(ip+":"+str(port), baud=57600, wait_ready=True)
         self.airspeed = 50
         self.rotationAngle = 5
+        self.state = "DISARMED"
         print("Drone connected")
         
     def getDroneDataSerialized(self):
@@ -18,10 +19,13 @@ class Drone:
         droneData.longitude = self.drone.location.global_relative_frame.lon
         droneData.voltage = self.drone.battery.voltage
         droneData.speed = float(self.drone.airspeed)
+        droneData.state = self.state
         return droneData.SerializeToString() 
         
     def armAndReady(self):
         print("Arming Drone.. ")
+
+        self.state = "ARMING"
         while not self.drone.is_armable:
             time.sleep(1)
         
@@ -31,6 +35,7 @@ class Drone:
         while not self.drone.armed:
             time.sleep(1)
             
+        self.state = "TAKING OFF"
         print("Drone Armed and Ready to Takeoff")
         self.takeoff(10)
         
@@ -47,6 +52,7 @@ class Drone:
                 self.drone.simple_goto(self.drone.location.global_relative_frame)
                 break
             time.sleep(1)
+        self.state = "READY"
             
     def up(self):
         msg = self.drone.message_factory.set_position_target_local_ned_encode(
@@ -119,6 +125,7 @@ class Drone:
     def land(self):
         print("Landing")
         self.drone.mode = VehicleMode("LAND")
+        self.state = "LAND"
     
     def executeCommand(self, command):
         if command.code == 9:
