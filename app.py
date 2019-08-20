@@ -57,7 +57,7 @@ class Consumer (threading.Thread):
 	
 
 if __name__ == '__main__':
-    
+
     socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     while True:
         try:
@@ -68,14 +68,12 @@ if __name__ == '__main__':
             time.sleep(2)
 
     queue = queue.Queue(maxsize=1024)
-    drone = Drone("127.0.0.1", 14550)
+    drone = Drone("192.168.170.57", 14550)
     serverMessageReceiver = DataReceiver(socket, queue, drone)
     serverMessageReceiver.start()
 
-
-    serverMessageConsumer = Consumer(queue, drone)
-    serverMessageConsumer.start()
-    
+    #serverMessageConsumer = Consumer(queue, drone)
+    #serverMessageConsumer.start()
     
     try:
         while(True):
