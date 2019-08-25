@@ -4,8 +4,9 @@ import time
 import ProtoData_pb2 as proto
 
 class Drone:
-    def __init__(self, ip, port):
+    def __init__(self, ip, port, video_port):
         self.drone = connect(ip+":"+str(port), baud=57600, wait_ready=True)
+        self.video_port = video_port
         self.airspeed = 50
         self.rotationAngle = 5
         self.state = "DISARMED"
@@ -20,6 +21,8 @@ class Drone:
         droneData.voltage = self.drone.battery.voltage
         droneData.speed = float(self.drone.airspeed)
         droneData.state = self.state
+        droneData.video_port = int(self.video_port)
+        
         return droneData.SerializeToString() 
         
     def armAndReady(self):

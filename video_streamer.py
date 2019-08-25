@@ -68,13 +68,12 @@ class ImageSender():
 jpeg_quality = 95
 
 import argparse
-parser = argparse.ArgumentParser(description='Commands vehicle using vehicle.simple_goto.')
-parser.add_argument('--videokey',
-                    help="Vehicle connection target string. If not specified, SITL automatically started and used.")
+parser = argparse.ArgumentParser()
+parser.add_argument('--port')
 args = parser.parse_args()
 
-video_key = args.videokey
-print(video_key+' -------------------------------------------------------')
+port = args.port
+connection_addr = '91.230.195.104:'+str(port)
 
 try:
         camera = PiCamera()
@@ -83,17 +82,15 @@ try:
         rawCapture = PiRGBArray(camera, size=(640, 480))
         time.sleep(0.1)
         
-        sender = ImageSender(connect_to="tcp://localhost:5555")
-        #sender = ImageSender(connect_to="tcp://192.168.170.57:5555")
-        myName = "droneCam"
+        sender = ImageSender(connect_to="tcp://"+connection_addr)
 
         for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
             Eret_code, jpg_buffer = cv2.imencode(".jpg", frame.array, [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality])
-            sender.send_jpg(myName, jpg_buffer)
+            sender.send_jpg('myName', jpg_buffer)
             rawCapture.truncate(0)
             
 except Exception as e:
         print(str(e))
 finally:
-        print("Done")
+        print("Streamer Done")
     

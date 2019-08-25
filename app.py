@@ -1,9 +1,10 @@
-import socket
+import socket, os, signal
 import threading
 import time
 import queue 
 import ProtoData_pb2 as proto
 from drone import Drone 
+from subprocess import Popen
 
 class DataReceiver (threading.Thread):
    def __init__(self, socket, queue, drone):
@@ -56,20 +57,38 @@ class Consumer (threading.Thread):
               break
 	
 
-if __name__ == '__main__':
+#CONTROL_HOST = '192.168.170.48'
+CONTROL_HOST = '91.230.195.104'
+VIDEO_SERVER_PORT = 65440
+DRONE_CLOUD_SERVER_PORT = 1314
 
-    socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+if __name__ == '__main__':
+    
+    videoServerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    videoServerSocket.connect((CONTROL_HOST, VIDEO_SERVER_PORT))
+    videoServerSocket.sendall(b'Peter Drone 1')
+    
+    data = videoServerSocket.recv(1024).decode()
+    
+    streamer_port, video_feed_port = data.split(':')
+    
+    print("Video Feed Port: "+str(video_feed_port))
+    
+    videoStreamerProc = Popen('python3 video_streamer.py --port='+str(streamer_port), shell=True)
+
+    controlServerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     while True:
         try:
-            socket.connect(("192.168.170.48", 1314))
+            controlServerSocket.connect((CONTROL_HOST, DRONE_CLOUD_SERVER_PORT))
             break;
         except Exception as e:
             print('Could not connect to remote Server: '+str(e))
             time.sleep(2)
 
     queue = queue.Queue(maxsize=1024)
-    drone = Drone("192.168.170.57", 14550)
-    serverMessageReceiver = DataReceiver(socket, queue, drone)
+    drone = Drone("192.168.170.57", 14550, video_feed_port)
+    serverMessageReceiver = DataReceiver(controlServerSocket, queue, drone)
     serverMessageReceiver.start()
 
     #serverMessageConsumer = Consumer(queue, drone)
@@ -79,12 +98,15 @@ if __name__ == '__main__':
         while(True):
             time.sleep(1)
             #s.send(bytes(g+"\n","utf-8"))
-            socket.send(drone.getDroneDataSerialized())
+            controlServerSocket.send(drone.getDroneDataSerialized())
 		
     except Exception as e:
         print(str(e))
 	
-    socket.close()
+    controlServerSocket.close()
     drone.close()
-
-    print('Done')
+    
+    os.kill(videoStreamerProc.pid, signal.SIGKILL)
+    videoServerSocket.close()
+    
+    print('Drone Over')

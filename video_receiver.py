@@ -1,9 +1,8 @@
 import numpy as np
 import cv2
-from flask import Flask, render_template, Response
+from flask import Flask, Response
 import zmq
-
- 
+import argparse
 
 class ImageHub():
 
@@ -62,8 +61,8 @@ class SerializingContext(zmq.Context):
     _socket_class = SerializingSocket
 
 
-def gen():
-    imageHub = ImageHub() 
+def start_video_stream():
+    imageHub = ImageHub('tcp://*:'+port_sender) 
         
     while True:
         rpiName, frame = imageHub.recv_jpg()
@@ -77,16 +76,19 @@ def gen():
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 
-app = Flask(__name__)
+parser = argparse.ArgumentParser()
+parser.add_argument('--port_sender')
+parser.add_argument('--port_videolink')
+args = parser.parse_args()
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+port_sender = args.port_sender
+port_videolink = args.port_videolink
+
+app = Flask(__name__)
 
 @app.route('/video_feed')
 def video_feed():
-    return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response( start_video_stream(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__':
-    #app.run(host='localhost', port=5002, debug=True)
-    app.run(host='192.168.170.57', port=5002, debug=True)
+    app.run(host='91.230.195.104', port=port_videolink, debug=True)

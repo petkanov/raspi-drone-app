@@ -1,5 +1,5 @@
 dronekit-sitl copter --home=35.9835656, -95.8754125, 0, 180
 
-mavproxy.py --master tcp:127.0.0.1:5760 --out udp:127.0.0.1:14551 --out udp:127.0.0.1:14550
+mavproxy.py --master tcp:127.0.0.1:5760 --out udp:127.0.0.1:14551 --out udp:192.168.170.57:14550
 
 vehicle = connect('127.0.0.1:14550', baud=57600, wait_ready=True)
