@@ -5,11 +5,11 @@ import time, base64, socket, argparse
 from utils import Utils
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--name')
+parser.add_argument('--drone_id')
 parser.add_argument('--port')
 args = parser.parse_args()
 
-NAME = args.name
+DRONE_ID = args.drone_id
 VIDEO_SERVER_PORT = int(args.port)
 FRAMES_PER_SECOND = 15
 
@@ -28,6 +28,9 @@ try:
         
         videoServerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         videoServerSocket.connect((CONTROL_HOST, VIDEO_SERVER_PORT))
+        
+        droneIdBytes = Utils.createNetworkMessage(str.encode(DRONE_ID))
+        videoServerSocket.send(droneIdBytes)
 
         for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
             
