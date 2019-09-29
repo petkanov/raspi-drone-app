@@ -29,8 +29,7 @@ class DataReceiver (threading.Thread):
 
 
 
-#CONTROL_HOST = '192.168.170.48'
-CONTROL_HOST = '91.230.195.104'
+CONTROL_HOST = '87.121.112.111'
 VIDEO_SERVER_PORT = 1313
 DRONE_CLOUD_SERVER_PORT = 1314
 DRONE_ID = str(netifaces.ifaddresses('eth0')[netifaces.AF_LINK][0]['addr']).replace(':','')

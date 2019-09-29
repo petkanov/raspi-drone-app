@@ -1,7 +1,63 @@
 from dronekit import connect, VehicleMode, LocationGlobalRelative
 from pymavlink import mavutil
-import time
+import time, threading
 import ProtoData_pb2 as proto
+
+
+class XEngine (threading.Thread):
+   def __init__(self, drone):
+      threading.Thread.__init__(self)
+      self.daemon = True
+      self.drone = drone
+      self.command_strength = 0
+   
+   def increaseStrength(self):
+      self.command_strength += 1;
+      
+   def decreaseStrength(self):
+      self.command_strength -= 1;
+      
+   def stopMovement(self):
+       self.command_strength = 0;
+      
+   def run(self):
+      while(True):
+          try:
+              if self.command_strength != 0:
+                 self.drone.XMove(self.command_strength)
+              time.sleep(1)
+              
+          except Exception as e:
+              print("XEngine killed: "+str(e))
+              break
+
+class ZEngine (threading.Thread):
+   def __init__(self, drone):
+      threading.Thread.__init__(self)
+      self.daemon = True
+      self.drone = drone
+      self.command_strength = 0
+   
+   def increaseStrength(self):
+      self.command_strength += 1;
+      
+   def decreaseStrength(self):
+      self.command_strength -= 1;
+      
+   def stopMovement(self):
+       self.command_strength = 0;
+      
+   def run(self):
+      while(True):
+          try:
+              if self.command_strength != 0:
+                 self.drone.ZMove(self.command_strength)
+              time.sleep(1)
+              
+          except Exception as e:
+              print("ZEngine killed: "+str(e))
+              break
+
 
 class Drone:
     def __init__(self, ip, port, video_port, drone_id):
@@ -11,6 +67,10 @@ class Drone:
         self.airspeed = 50
         self.rotationAngle = 5
         self.state = "DISARMED"
+        self.x_engine = XEngine(self)
+        self.z_engine = ZEngine(self)
+        self.x_engine.start()
+        self.z_engine.start()
         print("Drone connected")
         
     def getDroneDataSerialized(self):
@@ -59,28 +119,14 @@ class Drone:
             time.sleep(1)
         self.state = "READY"
             
-    def up(self):
+    def ZMove(self, velocity_strength):
         msg = self.drone.message_factory.set_position_target_local_ned_encode(
             0,
             0, 0,
             mavutil.mavlink.MAV_FRAME_BODY_NED,
             0b0000111111000111, #-- BITMASK -> Consider only the velocities
             0, 0, 0,        #-- POSITION
-            0, 0, -self.airspeed,     #-- VELOCITY  vx, vy, vz,
-            0, 0, 0,        #-- ACCELERATIONS
-            0, 0)
-        
-        self.drone.send_mavlink(msg)
-        self.drone.flush()
-        
-    def down(self):
-        msg = self.drone.message_factory.set_position_target_local_ned_encode(
-            0,
-            0, 0,
-            mavutil.mavlink.MAV_FRAME_BODY_NED,
-            0b0000111111000111, #-- BITMASK -> Consider only the velocities
-            0, 0, 0,        #-- POSITION
-            0, 0, self.airspeed,     #-- VELOCITY  vx, vy, vz,
+            0, 0, velocity_strength,     #-- VELOCITY  vx, vy, vz,
             0, 0, 0,        #-- ACCELERATIONS
             0, 0)
         
@@ -113,14 +159,14 @@ class Drone:
         self.drone.send_mavlink(msg)
         self.drone.flush()
         
-    def forward(self):
+    def XMove(self, velocity_strength):
         msg = self.drone.message_factory.set_position_target_local_ned_encode(
         0,       # time_boot_ms (not used)
         0, 0,    # target system, target component
         mavutil.mavlink.MAV_FRAME_BODY_NED, # frame
         0b0000111111000111, # type_mask (only positions enabled)
         0, 0, 0,
-        self.airspeed, 0, 0, # x, y, z velocity in m/s  (not used)
+        velocity_strength, 0, 0, # x, y, z velocity in m/s  (not used)
         0, 0, 0, # x, y, z acceleration (not supported yet, ignored in GCS_Mavlink)
         0, 0)
         
@@ -136,9 +182,9 @@ class Drone:
         if command.code == 9:
             self.armAndReady()
         if command.code == 1:
-            self.up()
+            self.z_engine.increaseStrength()
         if command.code == 5:
-            self.down()
+            self.z_engine.decreaseStrength()
         if command.code == 2:
             self.rotateLeft()
         if command.code == 3:
@@ -146,7 +192,13 @@ class Drone:
         if command.code == 10:
             self.land()
         if command.code == 11:
-            self.forward()
+            self.x_engine.increaseStrength()
+        if command.code == 4:
+            self.x_engine.decreaseStrength()
+        if command.code == 12:
+            self.x_engine.stopMovement()
+        if command.code == 13:
+            self.z_engine.stopMovement()
             
     def close(self):
        self.drone.close()
