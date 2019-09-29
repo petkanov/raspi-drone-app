@@ -126,7 +126,7 @@ class Drone:
             mavutil.mavlink.MAV_FRAME_BODY_NED,
             0b0000111111000111, #-- BITMASK -> Consider only the velocities
             0, 0, 0,        #-- POSITION
-            0, 0, velocity_strength,     #-- VELOCITY  vx, vy, vz,
+            0, 0, -velocity_strength,     #-- VELOCITY  vx, vy, vz,
             0, 0, 0,        #-- ACCELERATIONS
             0, 0)
         
