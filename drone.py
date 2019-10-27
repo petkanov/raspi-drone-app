@@ -12,10 +12,10 @@ class XEngine (threading.Thread):
       self.command_strength = 0
    
    def increaseStrength(self):
-      self.command_strength += 1;
+      self.command_strength += 0.3;
       
    def decreaseStrength(self):
-      self.command_strength -= 1;
+      self.command_strength -= 0.3;
       
    def stopMovement(self):
        self.command_strength = 0;
@@ -39,10 +39,10 @@ class ZEngine (threading.Thread):
       self.command_strength = 0
    
    def increaseStrength(self):
-      self.command_strength += 1;
+      self.command_strength += 0.1;
       
    def decreaseStrength(self):
-      self.command_strength -= 1;
+      self.command_strength -= 0.1;
       
    def stopMovement(self):
        self.command_strength = 0;
@@ -61,11 +61,12 @@ class ZEngine (threading.Thread):
 
 class Drone:
     def __init__(self, ip, port, video_port, drone_id):
-        self.drone = connect(ip+":"+str(port), baud=57600, wait_ready=True)
+        #self.drone = connect(ip+":"+str(port), baud=57600, wait_ready=True)
+        self.drone = connect('/dev/ttyS0', wait_ready=True, baud=57600)
         self.video_port = video_port
         self.drone_id = drone_id
         self.airspeed = 50
-        self.rotationAngle = 5
+        self.rotationAngle = 15
         self.state = "DISARMED"
         self.x_engine = XEngine(self)
         self.z_engine = ZEngine(self)
@@ -91,18 +92,21 @@ class Drone:
         print("Arming Drone.. ")
 
         self.state = "ARMING"
-        while not self.drone.is_armable:
-            time.sleep(1)
+        #while not self.drone.is_armable:
+            #print('self.drone.is_armable: '+str(self.drone.is_armable))
+            #time.sleep(1)
         
         self.drone.mode = VehicleMode("GUIDED")        
         self.drone.armed = True
     
         while not self.drone.armed:
+            print('self.drone.armed: '+str(self.drone.armed))
+            self.drone.armed = True
             time.sleep(1)
             
         self.state = "TAKING OFF"
         print("Drone Armed and Ready to Takeoff")
-        self.takeoff(10)
+        self.takeoff(2)
         
     def takeoff(self, hight):
         print("Takeoff")
@@ -139,7 +143,7 @@ class Drone:
             mavutil.mavlink.MAV_CMD_CONDITION_YAW, #command
             0, #confirmation
             self.rotationAngle,  # param 1, yaw in degrees
-            5,          # param 2, yaw speed deg/s
+            1,          # param 2, yaw speed deg/s
             -1,          # param 3, direction -1 ccw, 1 cw
             True, # param 4, 1 - relative to current position offset, 0 - absolute, angle 0 means North
             0, 0, 0)    # param 5 ~ 7 not used
@@ -152,7 +156,7 @@ class Drone:
             mavutil.mavlink.MAV_CMD_CONDITION_YAW, #command
             0, #confirmation
             self.rotationAngle,    # param 1, yaw in degrees
-            5,          # param 2, yaw speed deg/s
+            1,          # param 2, yaw speed deg/s
             1,          # param 3, direction -1 ccw, 1 cw
             True, # param 4, 1 - relative to current position offset, 0 - absolute, angle 0 means North
             0, 0, 0)    # param 5 ~ 7 not used

@@ -33,8 +33,9 @@ try:
         videoServerSocket.send(droneIdBytes)
 
         for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+            img_rot = cv2.rotate(frame.array, cv2.ROTATE_180)
             
-            Eret_code, jpg_buffer = cv2.imencode(".jpg", frame.array, [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY])
+            Eret_code, jpg_buffer = cv2.imencode(".jpg", img_rot, [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY])
 
             networkMsg = Utils.createNetworkMessage(base64.b64encode(jpg_buffer))
             

@@ -51,7 +51,7 @@ if __name__ == '__main__':
             print('Could not connect to remote Server: '+str(e))
             time.sleep(2)
 
-    drone = Drone("192.168.170.57", 14550, 11111, DRONE_ID)
+    drone = Drone("192.168.0.102", 14550, 11111, DRONE_ID)
     
     serverMessageReceiver = DataReceiver(controlServerSocket, drone)
     serverMessageReceiver.start()
