@@ -2,19 +2,49 @@ import socket, os, signal
 from subprocess import Popen
 import threading, time, netifaces
 import ProtoData_pb2 as proto
+from urllib.request import urlopen
 from drone import Drone 
 from utils import Utils
 
 
+class ConnectionWatchdog (threading.Thread):
+   def __init__(self, drone):
+      threading.Thread.__init__(self)
+      self.daemon = True
+      self.drone = drone
+      self.connectionTryCounter = 0;
+      
+   def run(self):
+      while(True):
+          if self.isInternetOn():
+              self.connectionTryCounter = 0;
+              time.sleep(2)
+          else:
+              self.drone.freeze()
+              self.connectionTryCounter = self.connectionTryCounter + 1
+              time.sleep(1)
+              if self.connectionTryCounter == MAX_RECONNECTION_ATTEMPTS:
+                  drone.goHome()
+                  break
+   
+   def isInternetOn(self):
+    try:
+        urlopen(str('http://'+CONTROL_HOST), timeout=1)
+        return True
+    except: 
+        return False
+       
+       
 class DataReceiver (threading.Thread):
    def __init__(self, socket, drone):
       threading.Thread.__init__(self)
       self.daemon = True
       self.socket = socket
       self.drone = drone
+      self.isActive = True
       
    def run(self):
-      while(True):
+      while(self.isActive):
           try:
               data = Utils.readNetworkMessage(self.socket)
               
@@ -26,54 +56,74 @@ class DataReceiver (threading.Thread):
           except Exception as e:
               print("Receiver killed: "+str(e))
               break
-
+      print("----------- DataReceiver done -----------------")
+   
+   def stop(self):
+       self.isActive = False
 
 
 CONTROL_HOST = '87.121.112.111'
 VIDEO_SERVER_PORT = 1313
 DRONE_CLOUD_SERVER_PORT = 1314
 DRONE_ID = str(netifaces.ifaddresses('eth0')[netifaces.AF_LINK][0]['addr']).replace(':','')
+MAX_RECONNECTION_ATTEMPTS = 180
+
+
+def connectToControlServer(controlServerSocket):
+    print('connectToControlServer')
+    while True:
+        controlServerSocket.connect((CONTROL_HOST, DRONE_CLOUD_SERVER_PORT))
+            
+        droneIdBytes = Utils.createNetworkMessage(str.encode(DRONE_ID))
+        controlServerSocket.send(droneIdBytes)
+        break
+
+def startSendingDataToServer(controlServerSocket):
+    print('startSendingDataToServer')
+    while(True):
+        msg = Utils.createNetworkMessage(drone.getDroneDataSerialized())
+        controlServerSocket.send(msg)
+        time.sleep(1)
+
+
+        
 
 if __name__ == '__main__':
     
+    drone = Drone("192.168.0.102", 14553, 11111, DRONE_ID)
+    
     videoStreamerProc = Popen('python3 video_streamer.py --port='+str(VIDEO_SERVER_PORT)+
                                                        ' --drone_id='+str(DRONE_ID), shell=True)
+    
+    watchdog = ConnectionWatchdog(drone)
+    watchdog.start()
 
-    controlServerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    controlServerSocket = None 
+    serverMessageReceiver = None 
+    
+    
     while True:
         try:
-            controlServerSocket.connect((CONTROL_HOST, DRONE_CLOUD_SERVER_PORT))
-            
-            droneIdBytes = Utils.createNetworkMessage(str.encode(DRONE_ID))
-            controlServerSocket.send(droneIdBytes)
-            break;
-        except Exception as e:
-            print('Could not connect to remote Server: '+str(e))
-            time.sleep(2)
-
-    drone = Drone("192.168.0.102", 14550, 11111, DRONE_ID)
+            controlServerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            connectToControlServer(controlServerSocket)
     
-    serverMessageReceiver = DataReceiver(controlServerSocket, drone)
-    serverMessageReceiver.start()
-
-
-    while(True):
-        try:
-            msg = Utils.createNetworkMessage(drone.getDroneDataSerialized())
-            controlServerSocket.send(msg)
+            serverMessageReceiver = DataReceiver(controlServerSocket, drone)
+            serverMessageReceiver.start()
             
-            if videoStreamerProc.poll() == 0: 
-               time.sleep(0.5)
-               videoStreamerProc = Popen('python3 video_streamer.py --port='+str(VIDEO_SERVER_PORT)+
-                                                                  ' --drone_id='+str(DRONE_ID), shell=True)
-               continue
-
-            time.sleep(1)
-		
+            startSendingDataToServer(controlServerSocket)
+            
         except Exception as e:
-            print(str(e))
-            break
-        
+            print('error: '+str(e))
+            drone.freeze()
+            
+            if controlServerSocket != None:
+                controlServerSocket.close()
+            if serverMessageReceiver != None:
+                serverMessageReceiver.stop()
+                
+            time.sleep(2)
+            
+
     os.kill(videoStreamerProc.pid, signal.SIGKILL)
     controlServerSocket.close()
     drone.close()

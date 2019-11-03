@@ -19,7 +19,11 @@ CONTROL_HOST = '87.121.112.111'
 WIDTH = 512 #368
 HEIGHT = 400 #304
 
-try:
+camera = None
+videoServerSocket = None
+
+while(True):
+    try:
         camera = PiCamera()
         camera.resolution = (WIDTH, HEIGHT)
         camera.framerate = FRAMES_PER_SECOND
@@ -43,9 +47,12 @@ try:
             
             rawCapture.truncate(0)
             
-except Exception as e:
+    except Exception as e:
         print(str(e))
         
-finally:
-        print("Done")
-    
+        if camera != None:
+            camera.close()
+        if videoServerSocket != None:
+            videoServerSocket.close()
+        
+        time.sleep(2)
