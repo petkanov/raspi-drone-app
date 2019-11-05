@@ -33,7 +33,11 @@ class ConnectionWatchdog (threading.Thread):
         return True
     except: 
         return False
-       
+
+class CommandData:
+   def __init__(self):
+      self.code = None
+      self.data = None      
        
 class DataReceiver (threading.Thread):
    def __init__(self, socket, drone):
@@ -50,8 +54,17 @@ class DataReceiver (threading.Thread):
               
               command = proto.Command()
               command.ParseFromString(data)
-
-              self.drone.executeCommand(command)
+              
+              commandData = CommandData()
+              commandData.code = command.code
+              
+              if(command.code == 14):
+                  missionData = proto.MissionData()
+                  missionData.ParseFromString(command.payload)
+                  
+                  commandData.data = missionData
+              
+              self.drone.executeCommand(commandData)
               
           except Exception as e:
               print("Receiver killed: "+str(e))

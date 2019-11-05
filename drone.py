@@ -147,6 +147,10 @@ class ControlTab:
             self.lightState = GPIO.LOW
             GPIO.output(18,GPIO.LOW)
         
+    def activateMission(self, pointsData):
+        print("Landing")
+        self.drone.mode = VehicleMode("LAND")
+        
     def land(self):
         print("Landing")
         self.drone.mode = VehicleMode("LAND")
@@ -186,6 +190,7 @@ class Drone:
     def executeCommand(self, command):
         if command.code == 8:
             self.togleLights()
+            print(command.data)
         if command.code == 9:
             self.state = "ARMING"
             self.controlTab.armAndTakeoff()
@@ -209,6 +214,9 @@ class Drone:
             self.controlTab.stopSpeedX()
         if command.code == 13:
             self.controlTab.stopSpeedZ()
+        if command.code == 14:
+            self.state = "ON MISSION"
+            self.controlTab.activateMission(command.data)
             
     def close(self):
        self.drone.close()
