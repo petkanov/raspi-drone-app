@@ -1,4 +1,4 @@
-from dronekit import connect, VehicleMode
+from dronekit import connect, VehicleMode, Command
 from pymavlink import mavutil
 import time, threading
 import ProtoData_pb2 as proto
@@ -11,10 +11,13 @@ GPIO.output(18,GPIO.HIGH)
 
 
 class Engine (threading.Thread):
-   def __init__(self, drone, controlTab):
+   def __init__(self, droneControl, controlTab):
       threading.Thread.__init__(self)
       self.daemon = True
-      self.drone = drone
+      self.droneControl = droneControl
+      self.drone = droneControl.drone
+      self.currentCmndIndex = 0
+      self.lastMissionCmndIndex = -1
       self.controlTab = controlTab
       
    def rotate(self, direction, rotationAngle):
@@ -47,6 +50,15 @@ class Engine (threading.Thread):
    def run(self):
       while(True):
           try:
+              self.currentCmndIndex = self.drone.commands.next
+              
+              if self.currentCmndIndex == self.lastMissionCmndIndex:
+                  self.droneControl.state = 'MISSION OVER'
+                  self.drone.mode = VehicleMode("GUIDED")
+                  self.currentCmndIndex = 0
+                  self.lastMissionCmndIndex = -1
+                  self.controlTab.togleLights()
+              
               if self.controlTab.speedX != 0 or self.controlTab.speedZ != 0:
                   msg = self.drone.message_factory.set_position_target_local_ned_encode(
                   0,       # time_boot_ms (not used)
@@ -60,7 +72,7 @@ class Engine (threading.Thread):
         
                   self.drone.send_mavlink(msg)
                   self.drone.flush()
-              time.sleep(1)
+              time.sleep(1.5)
               
           except Exception as e:
               print("Engine killed: "+str(e))
@@ -68,8 +80,9 @@ class Engine (threading.Thread):
  
 
 class ControlTab:
-    def __init__(self, drone):
-        self.drone = drone
+    def __init__(self, droneControl):
+        self.drone = droneControl.drone
+        self.droneControl = droneControl
         self.lightState = GPIO.HIGH
         self.startAltitude = 2
         self.speedX = 0
@@ -77,7 +90,7 @@ class ControlTab:
         self.incrementValueX = 0.3
         self.incrementValueZ = 0.1
         self.rotationAngle = 15
-        self.engine = Engine(self.drone, self)
+        self.engine = Engine(droneControl, self)
         self.engine.start()
         
     def stopMovement(self):
@@ -148,8 +161,37 @@ class ControlTab:
             GPIO.output(18,GPIO.LOW)
         
     def activateMission(self, pointsData):
-        print("Landing")
-        self.drone.mode = VehicleMode("LAND")
+        
+        if self.drone.mode == VehicleMode("AUTO"):
+            self.drone.mode = VehicleMode("GUIDED")
+            self.droneControl.state = "MISSION PAUSE"
+            return
+        
+        self.drone.commands.next = 0
+        cmds = self.drone.commands
+        cmds.clear()
+        # add & remove command because of the bug(not seeing first time added command)
+        cmds.add(Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, 
+                          mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0, 0, 0, 0, 
+                          float(0), float(0), float(0)  ))
+        cmds.clear()
+        
+        if not self.drone.armed:
+            self.armAndTakeoff()
+        
+        for point in pointsData.point:
+            cmds.add(Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, 
+                             mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0, 0, 0, 0, 
+                             float(point.latitude), float(point.longitude), float(point.altitude)
+                    ))
+        #add dummy waypoint (lets us know when have reached destination)
+        cmds.add(Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, 
+                          mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0, 0, 0, 0, 
+                          float(0), float(0), float(0)  ))
+        self.engine.lastMissionCmndIndex = cmds.count
+        cmds.upload()
+        
+        self.drone.mode = VehicleMode("AUTO")
         
     def land(self):
         print("Landing")
@@ -162,7 +204,7 @@ class Drone:
         self.video_port = video_port
         self.drone_id = drone_id
         self.state = "DISARMED"
-        self.controlTab = ControlTab(self.drone)
+        self.controlTab = ControlTab(self)
         print("Drone connected")
         
     def getDroneDataSerialized(self):
@@ -190,7 +232,6 @@ class Drone:
     def executeCommand(self, command):
         if command.code == 8:
             self.togleLights()
-            print(command.data)
         if command.code == 9:
             self.state = "ARMING"
             self.controlTab.armAndTakeoff()
