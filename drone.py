@@ -1,6 +1,6 @@
 from dronekit import connect, VehicleMode, Command
 from pymavlink import mavutil
-import time, threading
+import time, threading, logging
 import ProtoData_pb2 as proto
 import RPi.GPIO as GPIO
 
@@ -18,6 +18,9 @@ class Engine (threading.Thread):
       self.drone = droneControl.drone
       self.lastMissionCmndIndex = -1
       self.controlTab = controlTab
+      
+      
+      logging.info('Engine started')
       
    def rotate(self, direction, rotationAngle):
        msg = self.drone.message_factory.command_long_encode(
@@ -212,8 +215,8 @@ class ControlTab:
 
 class Drone:
     def __init__(self, ip, port, video_port, drone_id):
-        self.drone = connect(ip+":"+str(port), baud=57600, wait_ready=True)
-        #self.drone = connect('/dev/ttyS0', wait_ready=True, baud=57600)
+        #self.drone = connect(ip+":"+str(port), baud=57600, wait_ready=True)
+        self.drone = connect('/dev/ttyS0', wait_ready=True, baud=57600)
         self.video_port = video_port
         self.drone_id = drone_id
         self.state = "DISARMED"
