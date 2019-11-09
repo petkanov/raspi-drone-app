@@ -16,7 +16,6 @@ class Engine (threading.Thread):
       self.daemon = True
       self.droneControl = droneControl
       self.drone = droneControl.drone
-      self.currentCmndIndex = 0
       self.lastMissionCmndIndex = -1
       self.controlTab = controlTab
       
@@ -50,13 +49,11 @@ class Engine (threading.Thread):
    def run(self):
       while(True):
           try:
-              self.currentCmndIndex = self.drone.commands.next
-              
-              if self.currentCmndIndex == self.lastMissionCmndIndex:
+              if self.drone.commands.next == self.lastMissionCmndIndex:
                   self.droneControl.state = 'MISSION OVER'
-                  self.drone.mode = VehicleMode("GUIDED")
-                  self.currentCmndIndex = 0
+                  self.drone.commands.next = 0
                   self.lastMissionCmndIndex = -1
+                  self.drone.mode = VehicleMode("GUIDED")
                   self.controlTab.togleLights()
               
               if self.controlTab.speedX != 0 or self.controlTab.speedZ != 0:
@@ -160,12 +157,28 @@ class ControlTab:
             self.lightState = GPIO.LOW
             GPIO.output(18,GPIO.LOW)
         
+    def cancelMission(self):
+        self.drone.mode = VehicleMode("GUIDED")
+        self.drone.commands.next = 0
+        self.engine.lastMissionCmndIndex = -1
+        cmds = self.drone.commands
+        cmds.clear()
+        cmds.upload()
+        
+        
     def activateMission(self, pointsData):
         
         if self.drone.mode == VehicleMode("AUTO"):
             self.drone.mode = VehicleMode("GUIDED")
             self.droneControl.state = "MISSION PAUSE"
+            self.droneControl.freeze()
             return
+        
+        if self.drone.commands.next > 0 and self.drone.mode == VehicleMode("GUIDED"):
+            self.droneControl.state = "MISSION RESUME"
+            self.drone.mode = VehicleMode("AUTO")
+            return
+            
         
         self.drone.commands.next = 0
         cmds = self.drone.commands
@@ -184,7 +197,7 @@ class ControlTab:
                              mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0, 0, 0, 0, 
                              float(point.latitude), float(point.longitude), float(point.altitude)
                     ))
-        #add dummy waypoint (lets us know when have reached destination)
+        #add dummy waypoint (to let us know we have reached the destination)
         cmds.add(Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, 
                           mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0, 0, 0, 0, 
                           float(0), float(0), float(0)  ))
@@ -258,6 +271,10 @@ class Drone:
         if command.code == 14:
             self.state = "ON MISSION"
             self.controlTab.activateMission(command.data)
+        if command.code == 6:
+            self.state = "MISSION CANCEL"
+            self.controlTab.cancelMission()
+            self.freeze()
             
     def close(self):
        self.drone.close()

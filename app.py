@@ -29,7 +29,7 @@ class ConnectionWatchdog (threading.Thread):
    
    def isInternetOn(self):
     try:
-        urlopen(str('http://'+CONTROL_HOST), timeout=1)
+        urlopen(str('http://google.com'), timeout=1)
         return True
     except: 
         return False
@@ -102,10 +102,11 @@ def startSendingDataToServer(controlServerSocket):
         
 
 if __name__ == '__main__':
+    time.sleep(5)
     
     drone = Drone("192.168.0.102", 14553, 11111, DRONE_ID)
     
-    videoStreamerProc = Popen('python3 video_streamer.py --port='+str(VIDEO_SERVER_PORT)+
+    videoStreamerProc = Popen('/usr/bin/python3 /home/pi/raspi-drone-app/video_streamer.py --port='+str(VIDEO_SERVER_PORT)+
                                                        ' --drone_id='+str(DRONE_ID), shell=True)
     
     watchdog = ConnectionWatchdog(drone)
