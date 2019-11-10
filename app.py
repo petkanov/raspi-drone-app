@@ -1,6 +1,6 @@
 import socket, os, signal, logging
 from subprocess import Popen
-import threading, time, netifaces
+import threading, time, netifaces, psutil
 import ProtoData_pb2 as proto
 from urllib.request import urlopen
 from drone import Drone 
@@ -16,11 +16,13 @@ class ConnectionWatchdog (threading.Thread):
       self.netStatus = True
       
    def run(self):
+      time.sleep(15)
+      
       while(True):
           try:
               if self.isInternetOn():
                   self.connectionTryCounter = 0;
-                  time.sleep(2)
+                  time.sleep(1)
               else:
                   self.drone.freeze()
                   self.connectionTryCounter = self.connectionTryCounter + 1
@@ -34,11 +36,11 @@ class ConnectionWatchdog (threading.Thread):
    
    def isInternetOn(self):
     try:
-        urlopen(str('http://87.121.112.111'), timeout=1)
+        urlopen(str('http://216.58.212.46'), timeout=5)
         self.netStatus = True
         return True
     except: 
-        logging.error('Network is unreachable')
+        logging.error('Network is unreachable: ', exc_info=True)
         self.netStatus = False
         return False
 
@@ -77,7 +79,7 @@ class DataReceiver (threading.Thread):
               self.drone.executeCommand(commandData)
               
           except Exception as e:
-              logging.error(str(e), exc_info=True)
+              logging.error('app.py line 82: '+str(e), exc_info=True)
    
    def stop(self):
        self.isActive = False
@@ -103,19 +105,8 @@ def connectToControlServer(controlServerSocket):
         controlServerSocket.send(droneIdBytes)
         break
 
-def startSendingDataToServer(controlServerSocket):
-    print('startSendingDataToServer')
-    while(True):
-        msg = Utils.createNetworkMessage(drone.getDroneDataSerialized())
-        logging.info('Sending to Drone msg..')
-        controlServerSocket.send(msg)
-        time.sleep(1)
-
-
-        
 
 if __name__ == '__main__':
-    time.sleep(5)
     logging.debug('App started')
     
     while(True):
@@ -126,50 +117,61 @@ if __name__ == '__main__':
             logging.error(str(e), exc_info=True)
             time.sleep(2)
     
-    videoStreamerProc = Popen('/usr/bin/python3 /home/pi/raspi-drone-app/video_streamer.py --port='+str(VIDEO_SERVER_PORT)+
-                                                       ' --drone_id='+str(DRONE_ID), shell=True)
-    logging.info('Video Stream started')
     
     watchdog = ConnectionWatchdog(drone)
     watchdog.start()
     
-    
 
     controlServerSocket = None 
     serverMessageReceiver = None 
-    
+    videoStreamerProc = None
     
     while True:
         try:
+            while not watchdog.netStatus:
+                time.sleep(1)
+            
+            time.sleep(3)
+            
             controlServerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             
             connectToControlServer(controlServerSocket)
             logging.info('Socket Connection Opened')
     
+            videoStreamerProc = Popen('/usr/bin/python3 /home/pi/raspi-drone-app/video_streamer.py --port='+str(VIDEO_SERVER_PORT)+
+                                                       ' --drone_id='+str(DRONE_ID), shell=True)
+            logging.info('Video Stream started')
+            
             serverMessageReceiver = DataReceiver(controlServerSocket, drone)
             serverMessageReceiver.start()
             
-            #startSendingDataToServer(controlServerSocket)
-            while(watchdog.netStatus):
+            while watchdog.netStatus:
                 msg = Utils.createNetworkMessage(drone.getDroneDataSerialized())
-                logging.info('Sending to Drone msg..')
                 controlServerSocket.send(msg)
                 time.sleep(1)
-            raise Exception('Socket Link Broken')
             
+            logging.warn('Exiting while cycle on line 163')
+            #raise Exception('Socket Link Broken')
         except Exception as e:
-            logging.error(str(e), exc_info=True)
+            logging.error('app.py line 156: '+str(e), exc_info=True)
             drone.freeze()
+            
+        finally:
+            if videoStreamerProc != None:
+               current_process = psutil.Process(videoStreamerProc.pid)
+               children = current_process.children(recursive=True)
+               for child in children:
+                   if child.pid != os.getpid():
+                       os.kill(child.pid, signal.SIGKILL)
+            
+            os.kill(videoStreamerProc.pid, signal.SIGKILL)
             
             if controlServerSocket != None:
                 controlServerSocket.close()
             if serverMessageReceiver != None:
                 serverMessageReceiver.stop()
-                
-            time.sleep(2)
             
 
-    os.kill(videoStreamerProc.pid, signal.SIGKILL)
     controlServerSocket.close()
     drone.close()
     
