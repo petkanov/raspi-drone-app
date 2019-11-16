@@ -19,7 +19,6 @@ class Engine (threading.Thread):
       self.lastMissionCmndIndex = -1
       self.controlTab = controlTab
       
-      
       logging.info('Engine started')
       
    def rotate(self, direction, rotationAngle):
@@ -35,6 +34,19 @@ class Engine (threading.Thread):
        self.drone.send_mavlink(msg)
        self.drone.flush()
       
+   def killMotorsNow(self):
+       msg = self.drone.message_factory.command_long_encode(
+       1, 1,    # target system, target component
+       mavutil.mavlink.MAV_CMD_DO_FLIGHTTERMINATION , #command
+       1, #confirmation
+       1,  # param 1, yaw in degrees
+       1,          # param 2, yaw speed deg/s
+       1,          # param 3, direction -1 ccw, 1 cw
+       True, # param 4, 1 - relative to current position offset, 0 - absolute, angle 0 means North
+       0, 0, 0)    # param 5 ~ 7 not used
+       self.drone.send_mavlink(msg)
+       self.drone.flush()
+       
    def executeChangesNow(self):
        msg = self.drone.message_factory.set_position_target_local_ned_encode(
        0,       # time_boot_ms (not used)
@@ -75,7 +87,7 @@ class Engine (threading.Thread):
               time.sleep(1.5)
               
           except Exception as e:
-              print("Engine killed: "+str(e))
+              logging.error("Engine killed: "+str(e))
               break
  
 
@@ -84,7 +96,7 @@ class ControlTab:
         self.drone = droneControl.drone
         self.droneControl = droneControl
         self.lightState = GPIO.HIGH
-        self.startAltitude = 2
+        self.startAltitude = 1.5
         self.speedX = 0
         self.speedZ = 0
         self.incrementValueX = 0.3
@@ -128,25 +140,29 @@ class ControlTab:
         self.speedZ = 0
         self.engine.executeChangesNow()
         
+    def killMotorsNow(self):
+        self.killMotorsNow()
+        
     def armAndTakeoff(self):
-        print("Arming")
+        logging.info("Arming")
         
         self.drone.mode = VehicleMode("GUIDED")        
         self.drone.armed = True
+        time.sleep(1)
     
         while not self.drone.armed:
-            print('self.drone.armed: '+str(self.drone.armed))
+            logging.info('self.drone.armed: '+str(self.drone.armed))
             self.drone.armed = True
             time.sleep(1)
-            
-        print("Takeoff")
+        
         self.drone.simple_takeoff(self.startAltitude)
-    
+        logging.info("Takeoff")
+
         while True:
             currentHight = self.drone.location.global_relative_frame.alt
         
             if currentHight >= self.startAltitude * 0.95:
-                print("Altitude reached")
+                logging.info("Altitude reached")
                 #commanding movement to the same location to unlock Yaw
                 self.drone.simple_goto(self.drone.location.global_relative_frame)
                 break
@@ -210,7 +226,8 @@ class ControlTab:
         self.drone.mode = VehicleMode("AUTO")
         
     def land(self):
-        print("Landing")
+        logging.info("Landing")
+        self.drone.channels.overrides = {}
         self.drone.mode = VehicleMode("LAND")
 
 class Drone:
@@ -221,7 +238,7 @@ class Drone:
         self.drone_id = drone_id
         self.state = "DISARMED"
         self.controlTab = ControlTab(self)
-        print("Drone connected")
+        logging.info("Drone connected")
         
     def getDroneDataSerialized(self):
         droneData = proto.DroneData()
@@ -236,7 +253,7 @@ class Drone:
         return droneData.SerializeToString() 
         
     def freeze(self):
-        print('Freezing in a spot')
+        logging.info('Freezing in a spot')
         self.controlTab.stopMovement()
         
     def goHome(self):

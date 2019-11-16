@@ -97,12 +97,12 @@ logging.basicConfig(filename='/home/pi/raspi-drone-app/logs/app.log',
                     format='%(asctime)s -%(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 
 def connectToControlServer(controlServerSocket):
-    print('connectToControlServer')
     while True:
         controlServerSocket.connect((CONTROL_HOST, DRONE_CLOUD_SERVER_PORT))
             
         droneIdBytes = Utils.createNetworkMessage(str.encode(DRONE_ID))
         controlServerSocket.send(droneIdBytes)
+        logging.info('Connected To Control Server')
         break
 
 
@@ -163,8 +163,7 @@ if __name__ == '__main__':
                for child in children:
                    if child.pid != os.getpid():
                        os.kill(child.pid, signal.SIGKILL)
-            
-            os.kill(videoStreamerProc.pid, signal.SIGKILL)
+               os.kill(videoStreamerProc.pid, signal.SIGKILL)
             
             if controlServerSocket != None:
                 controlServerSocket.close()
