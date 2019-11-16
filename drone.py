@@ -54,7 +54,7 @@ class Engine (threading.Thread):
        mavutil.mavlink.MAV_FRAME_BODY_NED, # frame
        0b0000111111000111, # type_mask (only positions enabled)
        0, 0, 0,
-       self.controlTab.speedX, 0, self.controlTab.speedZ, # x, y, z velocity in m/s
+       self.controlTab.speedX, self.controlTab.speedY, self.controlTab.speedZ, # x, y, z velocity in m/s
        0, 0, 0, # x, y, z acceleration (not supported yet, ignored in GCS_Mavlink)
        0, 0)
         
@@ -71,14 +71,14 @@ class Engine (threading.Thread):
                   self.drone.mode = VehicleMode("GUIDED")
                   self.controlTab.togleLights()
               
-              if self.controlTab.speedX != 0 or self.controlTab.speedZ != 0:
+              if self.controlTab.speedX != 0 or self.controlTab.speedY != 0 or self.controlTab.speedZ != 0:
                   msg = self.drone.message_factory.set_position_target_local_ned_encode(
                   0,       # time_boot_ms (not used)
                   0, 0,    # target system, target component
                   mavutil.mavlink.MAV_FRAME_BODY_NED, # frame
                   0b0000111111000111, # type_mask (only positions enabled)
                   0, 0, 0,
-                  self.controlTab.speedX, 0, self.controlTab.speedZ, # x, y, z velocity in m/s
+                  self.controlTab.speedX, self.controlTab.speedY, self.controlTab.speedZ, # x, y, z velocity in m/s
                   0, 0, 0, # x, y, z acceleration (not supported yet, ignored in GCS_Mavlink)
                   0, 0)
         
@@ -98,8 +98,10 @@ class ControlTab:
         self.lightState = GPIO.HIGH
         self.startAltitude = 1.5
         self.speedX = 0
+        self.speedY = 0
         self.speedZ = 0
         self.incrementValueX = 0.3
+        self.incrementValueY = 0.3
         self.incrementValueZ = 0.1
         self.rotationAngle = 15
         self.engine = Engine(droneControl, self)
@@ -123,9 +125,18 @@ class ControlTab:
     def decreaseSpeedX(self):
         self.speedX = self.speedX - self.incrementValueX
         self.engine.executeChangesNow()
+   
+    def leftSpeedY(self):
+        self.speedY = self.speedY - self.incrementValueY
+        self.engine.executeChangesNow()
         
-    def stopSpeedX(self):
+    def rightSpeedY(self):
+        self.speedY = self.speedY + self.incrementValueY
+        self.engine.executeChangesNow()
+        
+    def stopSpeedXY(self):
         self.speedX = 0
+        self.speedY = 0
         self.engine.executeChangesNow()
         
     def increaseSpeedZ(self):
@@ -141,7 +152,7 @@ class ControlTab:
         self.engine.executeChangesNow()
         
     def killMotorsNow(self):
-        self.killMotorsNow()
+        self.engine.killMotorsNow()
         
     def armAndTakeoff(self):
         logging.info("Arming")
@@ -232,11 +243,12 @@ class ControlTab:
 
 class Drone:
     def __init__(self, ip, port, video_port, drone_id):
-        #self.drone = connect(ip+":"+str(port), baud=57600, wait_ready=True)
-        self.drone = connect('/dev/ttyS0', wait_ready=True, baud=57600)
+        self.drone = connect(ip+":"+str(port), baud=57600, wait_ready=True)
+        #self.drone = connect('/dev/ttyS0', wait_ready=True, baud=57600)
         self.video_port = video_port
         self.drone_id = drone_id
         self.state = "DISARMED"
+        self.isActive =True
         self.controlTab = ControlTab(self)
         logging.info("Drone connected")
         
@@ -284,8 +296,12 @@ class Drone:
             self.controlTab.increaseSpeedX()
         if command.code == 4:
             self.controlTab.decreaseSpeedX()
+        if command.code == 16:
+            self.controlTab.rightSpeedY()
+        if command.code == 15:
+            self.controlTab.leftSpeedY()
         if command.code == 12:
-            self.controlTab.stopSpeedX()
+            self.controlTab.stopSpeedXY()
         if command.code == 13:
             self.controlTab.stopSpeedZ()
         if command.code == 14:
@@ -295,6 +311,10 @@ class Drone:
             self.state = "MISSION CANCEL"
             self.controlTab.cancelMission()
             self.freeze()
+        if command.code == 17:
+            self.state = "MOTORS KILL"
+            self.controlTab.killMotorsNow()
+            self.isActive = False
             
     def close(self):
        self.drone.close()

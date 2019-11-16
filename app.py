@@ -126,7 +126,7 @@ if __name__ == '__main__':
     serverMessageReceiver = None 
     videoStreamerProc = None
     
-    while True:
+    while drone.isActive:
         try:
             while not watchdog.netStatus:
                 time.sleep(1)
@@ -145,12 +145,12 @@ if __name__ == '__main__':
             serverMessageReceiver = DataReceiver(controlServerSocket, drone)
             serverMessageReceiver.start()
             
-            while watchdog.netStatus:
+            while watchdog.netStatus and drone.isActive:
                 msg = Utils.createNetworkMessage(drone.getDroneDataSerialized())
                 controlServerSocket.send(msg)
                 time.sleep(1)
             
-            logging.warn('Exiting while cycle on line 163')
+            logging.warning('Exiting while cycle on line 163')
             #raise Exception('Socket Link Broken')
         except Exception as e:
             logging.error('app.py line 156: '+str(e), exc_info=True)
