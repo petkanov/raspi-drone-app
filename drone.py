@@ -269,12 +269,26 @@ class Drone:
         self.controlTab.stopMovement()
         
     def goHome(self):
-        self.controlTab.land()
+        print('Going Home')
+        for i in range(0,15):
+            self.controlTab.increaseSpeedZ()
+            time.sleep(0.5)
+        
+        while True:
+            currentHight = self.drone.location.global_relative_frame.alt
+        
+            if currentHight >= 70 * 0.95:
+                logging.info("Safe RTL Altitude reached")
+                self.drone.mode = VehicleMode("RTL")
+                break
+            time.sleep(1)
     
     def togleLights(self):
         self.controlTab.togleLights()
 
     def executeCommand(self, command):
+        if command.code == 7:
+            self.goHome()
         if command.code == 8:
             self.togleLights()
         if command.code == 9:
