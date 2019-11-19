@@ -91,7 +91,7 @@ DRONE_CLOUD_SERVER_PORT = 1314
 DRONE_ID = str(netifaces.ifaddresses('eth0')[netifaces.AF_LINK][0]['addr']).replace(':','')
 MAX_RECONNECTION_ATTEMPTS = 180
 
-logging.basicConfig(filename='/home/pi/raspi-drone-app/logs/app.log',
+logging.basicConfig(filename='/home/pi/raspi-drone-app/logs/app'+str(time.asctime())+'.log',
                     filemode='w',
                     level=logging.INFO,
                     format='%(asctime)s -%(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
@@ -111,7 +111,7 @@ if __name__ == '__main__':
     
     while(True):
         try:
-            drone = Drone("192.168.0.102", 14553, 11111, DRONE_ID)
+            drone = Drone("192.168.0.101", 14553, 11111, DRONE_ID)
             break
         except Exception as e:
             logging.error(str(e), exc_info=True)

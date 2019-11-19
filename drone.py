@@ -1,6 +1,6 @@
 from dronekit import connect, VehicleMode, Command
 from pymavlink import mavutil
-import time, threading, logging
+import time, threading, logging, math
 import ProtoData_pb2 as proto
 import RPi.GPIO as GPIO
 
@@ -31,8 +31,38 @@ class Engine (threading.Thread):
        direction,          # param 3, direction -1 ccw, 1 cw
        True, # param 4, 1 - relative to current position offset, 0 - absolute, angle 0 means North
        0, 0, 0)    # param 5 ~ 7 not used
+       """
+       msg = self.drone.message_factory.set_attitude_target_encode(
+        0, # time_boot_ms
+        0, # Target system
+        0, # Target component
+        0b00000001,
+        self.to_quaternion(0.0, 0.0, 0.0), # Quaternion
+        0.0, # Body roll rate in radian
+        0.0, # Body pitch rate in radian
+        2, # Body yaw rate in radian/second
+        0.5  # Thrust
+        )
+       """
        self.drone.send_mavlink(msg)
        self.drone.flush()
+       
+       
+   def to_quaternion(self, roll=0.0, pitch=0.0, yaw=0.0):
+     """Convert degrees to quaternions."""
+     t0 = math.cos(yaw * 0.5)
+     t1 = math.sin(yaw * 0.5)
+     t2 = math.cos(roll * 0.5)
+     t3 = math.sin(roll * 0.5)
+     t4 = math.cos(pitch * 0.5)
+     t5 = math.sin(pitch * 0.5)
+     w = t0 * t2 * t4 + t1 * t3 * t5
+     x = t0 * t3 * t4 - t1 * t2 * t5
+     y = t0 * t2 * t5 + t1 * t3 * t4
+     z = t1 * t2 * t4 - t0 * t3 * t5
+     return [w, x, y, z]    
+       
+       
       
    def killMotorsNow(self):
        msg = self.drone.message_factory.command_long_encode(
@@ -96,14 +126,14 @@ class ControlTab:
         self.drone = droneControl.drone
         self.droneControl = droneControl
         self.lightState = GPIO.HIGH
-        self.startAltitude = 1.5
+        self.startAltitude = 0.5
         self.speedX = 0
         self.speedY = 0
         self.speedZ = 0
-        self.incrementValueX = 0.3
-        self.incrementValueY = 0.3
-        self.incrementValueZ = 0.1
-        self.rotationAngle = 15
+        self.incrementValueX = 0.5
+        self.incrementValueY = 0.5
+        self.incrementValueZ = 0.2
+        self.rotationAngle = 10
         self.engine = Engine(droneControl, self)
         self.engine.start()
         
@@ -112,11 +142,11 @@ class ControlTab:
         self.speedZ = 0
         self.engine.executeChangesNow()
         
-    def rotateLeft(self):
-        self.engine.rotate(-1, self.rotationAngle)
+    def rotateLeft(self, angle):
+        self.engine.rotate(-1, angle)
     
-    def rotateRight(self):
-        self.engine.rotate(1, self.rotationAngle)
+    def rotateRight(self, angle):
+        self.engine.rotate(1, angle)
         
     def increaseSpeedX(self):
         self.speedX = self.speedX + self.incrementValueX
@@ -243,8 +273,8 @@ class ControlTab:
 
 class Drone:
     def __init__(self, ip, port, video_port, drone_id):
-        self.drone = connect(ip+":"+str(port), baud=57600, wait_ready=True)
-        #self.drone = connect('/dev/ttyS0', wait_ready=True, baud=57600)
+        #self.drone = connect(ip+":"+str(port), baud=57600, wait_ready=True)
+        self.drone = connect('/dev/ttyS0', wait_ready=True, baud=57600)
         self.video_port = video_port
         self.drone_id = drone_id
         self.state = "DISARMED"
@@ -300,9 +330,17 @@ class Drone:
         if command.code == 5:
             self.controlTab.decreaseSpeedZ()
         if command.code == 2:
-            self.controlTab.rotateLeft()
+            self.controlTab.rotateLeft(10)
         if command.code == 3:
-            self.controlTab.rotateRight()
+            self.controlTab.rotateRight(10)
+        if command.code == 18:
+            self.controlTab.rotateLeft(45)
+        if command.code == 19:
+            self.controlTab.rotateLeft(90)
+        if command.code == 20:
+            self.controlTab.rotateRight(45)
+        if command.code == 21:
+            self.controlTab.rotateRight(90)
         if command.code == 10:
             self.controlTab.land()
             self.state = "LAND"
