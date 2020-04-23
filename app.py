@@ -85,7 +85,9 @@ class DataReceiver (threading.Thread):
        self.isActive = False
 
 
-CONTROL_HOST = '87.121.112.111'
+CONTROL_HOST = '109.121.253.219'
+#CONTROL_HOST = '87.121.112.160'
+
 VIDEO_SERVER_PORT = 1313
 DRONE_CLOUD_SERVER_PORT = 1314
 DRONE_ID = str(netifaces.ifaddresses('eth0')[netifaces.AF_LINK][0]['addr']).replace(':','')
@@ -111,7 +113,8 @@ if __name__ == '__main__':
     
     while(True):
         try:
-            drone = Drone("192.168.0.101", 14553, 11111, DRONE_ID)
+            drone = Drone("192.168.0.102", 14553, 11111, DRONE_ID)
+            #drone = Drone("192.168.0.100", 14553, 11111, DRONE_ID) # simulator case, 192.168.0.102 is RPi local address
             break
         except Exception as e:
             logging.error(str(e), exc_info=True)

@@ -4,11 +4,14 @@ import time, threading, logging, math
 import ProtoData_pb2 as proto
 import RPi.GPIO as GPIO
 
+from servocontroller import ServoController
+
+dropperPIN = 21
+
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
-GPIO.setup(18,GPIO.OUT)
-GPIO.output(18,GPIO.HIGH)
-
+GPIO.setup(dropperPIN,GPIO.OUT)
+GPIO.output(dropperPIN,GPIO.HIGH)
 
 class Engine (threading.Thread):
    def __init__(self, droneControl, controlTab):
@@ -126,6 +129,11 @@ class ControlTab:
         self.drone = droneControl.drone
         self.droneControl = droneControl
         self.lightState = GPIO.HIGH
+        
+        self.cameraAngle = 140 # 60 - Lowest ; 230 Max value;
+        self.servoCamera = ServoController(self.cameraAngle)
+        self.servoCamera.start()
+        
         self.startAltitude = 0.5
         self.speedX = 0
         self.speedY = 0
@@ -212,10 +220,22 @@ class ControlTab:
     def togleLights(self):
         if self.lightState == GPIO.LOW:
             self.lightState = GPIO.HIGH
-            GPIO.output(18,GPIO.HIGH)
+            GPIO.output(dropperPIN,GPIO.HIGH)
         else:
             self.lightState = GPIO.LOW
-            GPIO.output(18,GPIO.LOW)
+            GPIO.output(dropperPIN,GPIO.LOW)
+
+    def cameraUP(self):
+        if self.cameraAngle > 60:
+            self.cameraAngle = self.cameraAngle - 20
+            print(self.cameraAngle)
+            self.servoCamera.setAngle(self.cameraAngle)
+
+    def cameraDOWN(self):
+        if self.cameraAngle < 220:
+            self.cameraAngle = self.cameraAngle + 20
+            print(self.cameraAngle)
+            self.servoCamera.setAngle(self.cameraAngle)
         
     def cancelMission(self):
         self.drone.mode = VehicleMode("GUIDED")
@@ -273,8 +293,8 @@ class ControlTab:
 
 class Drone:
     def __init__(self, ip, port, video_port, drone_id):
-        #self.drone = connect(ip+":"+str(port), baud=57600, wait_ready=True)
-        self.drone = connect('/dev/ttyS0', wait_ready=True, baud=57600)
+        self.drone = connect(ip+":"+str(port), baud=57600, wait_ready=True)
+        #self.drone = connect('/dev/ttyS0', wait_ready=True, baud=57600)
         self.video_port = video_port
         self.drone_id = drone_id
         self.state = "DISARMED"
@@ -317,6 +337,8 @@ class Drone:
         self.controlTab.togleLights()
 
     def executeCommand(self, command):
+        print(command.code)
+        
         if command.code == 7:
             self.goHome()
         if command.code == 8:
@@ -341,6 +363,16 @@ class Drone:
             self.controlTab.rotateRight(45)
         if command.code == 21:
             self.controlTab.rotateRight(90)
+        
+        
+        if command.code == 22:
+            self.controlTab.cameraUP()
+        if command.code == 23:
+            self.controlTab.cameraDOWN()
+            
+            
+            
+            
         if command.code == 10:
             self.controlTab.land()
             self.state = "LAND"

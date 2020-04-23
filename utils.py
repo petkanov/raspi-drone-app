@@ -14,3 +14,6 @@ class Utils:
         body = socket.recv(bodySize)
         
         return body
+
+    def createUDP_DatagramMessage(droneId, msgBody):
+        return droneId.encode() + msgBody   
