@@ -7,11 +7,16 @@ import RPi.GPIO as GPIO
 from servocontroller import ServoController
 
 dropperPIN = 21
+igniterPIN = 2
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
+
 GPIO.setup(dropperPIN,GPIO.OUT)
 GPIO.output(dropperPIN,GPIO.HIGH)
+
+GPIO.setup(igniterPIN,GPIO.OUT)
+GPIO.output(igniterPIN,GPIO.HIGH)
 
 class Engine (threading.Thread):
    def __init__(self, droneControl, controlTab):
@@ -128,7 +133,9 @@ class ControlTab:
     def __init__(self, droneControl):
         self.drone = droneControl.drone
         self.droneControl = droneControl
+        
         self.lightState = GPIO.HIGH
+        self.ignitorState = GPIO.HIGH
         
         self.cameraAngle = 140 # 60 - Lowest ; 230 Max value;
         self.servoCamera = ServoController(self.cameraAngle)
@@ -218,12 +225,18 @@ class ControlTab:
             time.sleep(1)
 
     def togleLights(self):
-        if self.lightState == GPIO.LOW:
-            self.lightState = GPIO.HIGH
-            GPIO.output(dropperPIN,GPIO.HIGH)
-        else:
-            self.lightState = GPIO.LOW
-            GPIO.output(dropperPIN,GPIO.LOW)
+        
+        self.ignitorState = GPIO.LOW
+        GPIO.output(igniterPIN,GPIO.LOW)
+        time.sleep(1)
+        self.ignitorState = GPIO.HIGH
+        GPIO.output(igniterPIN,GPIO.HIGH)
+        
+        self.lightState = GPIO.LOW
+        GPIO.output(dropperPIN,GPIO.LOW)
+        time.sleep(1)
+        self.lightState = GPIO.HIGH
+        GPIO.output(dropperPIN,GPIO.HIGH) 
 
     def cameraUP(self):
         if self.cameraAngle > 60:
@@ -292,9 +305,12 @@ class ControlTab:
         self.drone.mode = VehicleMode("LAND")
 
 class Drone:
-    def __init__(self, ip, port, video_port, drone_id):
-        self.drone = connect(ip+":"+str(port), baud=57600, wait_ready=True)
-        #self.drone = connect('/dev/ttyS0', wait_ready=True, baud=57600)
+    def __init__(self, ip, port, video_port, drone_id, use_simulator):
+        if use_simulator:
+            self.drone = connect(ip+":"+str(port), baud=57600, wait_ready=True)
+        else:
+            self.drone = connect('/dev/ttyS0', wait_ready=True, baud=57600)
+            
         self.video_port = video_port
         self.drone_id = drone_id
         self.state = "DISARMED"

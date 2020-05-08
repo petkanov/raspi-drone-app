@@ -6,16 +6,16 @@ from utils import Utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--drone_id')
+parser.add_argument('--ip')
 parser.add_argument('--port')
 args = parser.parse_args()
 
+CONTROL_HOST = args.ip
 DRONE_ID = args.drone_id
 VIDEO_SERVER_PORT = int(args.port)
 FRAMES_PER_SECOND = 11
 
 JPEG_QUALITY = 78
-CONTROL_HOST = '109.121.253.219'
-#CONTROL_HOST = '87.121.112.160'
  
 WIDTH = 512 #368
 HEIGHT = 352 #304

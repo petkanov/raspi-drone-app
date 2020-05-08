@@ -7,6 +7,22 @@ from drone import Drone
 from utils import Utils
 
 
+CONTROL_HOST = '109.121.253.219'
+#CONTROL_HOST = '87.121.112.160'
+USE_SIMULATOR = True
+
+VIDEO_SERVER_PORT = 1313
+DRONE_CLOUD_SERVER_PORT = 1314
+DRONE_ID = str(netifaces.ifaddresses('eth0')[netifaces.AF_LINK][0]['addr']).replace(':','')
+MAX_RECONNECTION_ATTEMPTS = 180
+
+logging.basicConfig(filename='/home/pi/raspi-drone-app/logs/app'+str(time.asctime())+'.log',
+                    filemode='w',
+                    level=logging.INFO,
+                    format='%(asctime)s -%(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+
+
+
 class ConnectionWatchdog (threading.Thread):
    def __init__(self, drone):
       threading.Thread.__init__(self)
@@ -85,18 +101,6 @@ class DataReceiver (threading.Thread):
        self.isActive = False
 
 
-CONTROL_HOST = '109.121.253.219'
-#CONTROL_HOST = '87.121.112.160'
-
-VIDEO_SERVER_PORT = 1313
-DRONE_CLOUD_SERVER_PORT = 1314
-DRONE_ID = str(netifaces.ifaddresses('eth0')[netifaces.AF_LINK][0]['addr']).replace(':','')
-MAX_RECONNECTION_ATTEMPTS = 180
-
-logging.basicConfig(filename='/home/pi/raspi-drone-app/logs/app'+str(time.asctime())+'.log',
-                    filemode='w',
-                    level=logging.INFO,
-                    format='%(asctime)s -%(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 
 def connectToControlServer(controlServerSocket):
     while True:
@@ -108,13 +112,14 @@ def connectToControlServer(controlServerSocket):
         break
 
 
+
+
 if __name__ == '__main__':
     logging.debug('App started')
     
     while(True):
         try:
-            drone = Drone("192.168.0.102", 14553, 11111, DRONE_ID)
-            #drone = Drone("192.168.0.100", 14553, 11111, DRONE_ID) # simulator case, 192.168.0.102 is RPi local address
+            drone = Drone("192.168.0.102", 14553, 11111, DRONE_ID, USE_SIMULATOR) # simulator case, 192.168.0.102 is RPi local address
             break
         except Exception as e:
             logging.error(str(e), exc_info=True)
@@ -142,7 +147,7 @@ if __name__ == '__main__':
             logging.info('Socket Connection Opened')
     
             videoStreamerProc = Popen('/usr/bin/python3 /home/pi/raspi-drone-app/video_streamer.py --port='+str(VIDEO_SERVER_PORT)+
-                                                       ' --drone_id='+str(DRONE_ID), shell=True)
+                                                       ' --ip='+CONTROL_HOST + ' --drone_id='+str(DRONE_ID), shell=True)
             logging.info('Video Stream started')
             
             serverMessageReceiver = DataReceiver(controlServerSocket, drone)
