@@ -320,11 +320,16 @@ class Drone:
         
     def getDroneDataSerialized(self):
         droneData = proto.DroneData()
-        droneData.altitude = self.drone.location.global_relative_frame.alt
-        droneData.latitude = self.drone.location.global_relative_frame.lat
-        droneData.longitude = self.drone.location.global_relative_frame.lon
-        droneData.voltage = self.drone.battery.voltage
-        droneData.speed = float(self.drone.airspeed)
+        if self.drone.location.global_relative_frame.alt != None:
+          droneData.altitude = self.drone.location.global_relative_frame.alt
+        if self.drone.location.global_relative_frame.lat != None:		  
+          droneData.latitude = self.drone.location.global_relative_frame.lat
+        if self.drone.location.global_relative_frame.lon != None:		  
+          droneData.longitude = self.drone.location.global_relative_frame.lon
+        if self.drone.battery.voltage != None:
+          droneData.voltage = self.drone.battery.voltage
+        if self.drone.airspeed != None:
+          droneData.speed = float(self.drone.airspeed)
         droneData.state = self.state
         droneData.video_port = int(self.video_port)
         droneData.drone_id = str(self.drone_id)
@@ -336,7 +341,7 @@ class Drone:
         
     def goHome(self):
         print('Going Home')
-        for i in range(0,15):
+        for i in range(0,10):
             self.controlTab.increaseSpeedZ()
             time.sleep(0.5)
         

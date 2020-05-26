@@ -9,7 +9,7 @@ from utils import Utils
 
 CONTROL_HOST = '109.121.253.219'
 #CONTROL_HOST = '87.121.112.160'
-USE_SIMULATOR = True
+USE_SIMULATOR = False
 
 VIDEO_SERVER_PORT = 1313
 DRONE_CLOUD_SERVER_PORT = 1314
@@ -52,7 +52,8 @@ class ConnectionWatchdog (threading.Thread):
    
    def isInternetOn(self):
     try:
-        urlopen(str('http://216.58.212.46'), timeout=5)
+        #urlopen(str('http://216.58.212.46'), timeout=5)
+        urlopen(str('http://'+CONTROL_HOST), timeout=5)
         self.netStatus = True
         return True
     except: 
@@ -119,7 +120,7 @@ if __name__ == '__main__':
     
     while(True):
         try:
-            drone = Drone("192.168.0.102", 14553, 11111, DRONE_ID, USE_SIMULATOR) # simulator case, 192.168.0.102 is RPi local address
+            drone = Drone("192.168.0.104", 14553, 11111, DRONE_ID, USE_SIMULATOR) # simulator case, 192.168.0.104 is RPi local address
             break
         except Exception as e:
             logging.error(str(e), exc_info=True)
@@ -158,10 +159,10 @@ if __name__ == '__main__':
                 controlServerSocket.send(msg)
                 time.sleep(1)
             
-            logging.warning('Exiting while cycle on line 163')
+            logging.warning('Exiting drone.isActive cycle on line 161')
             #raise Exception('Socket Link Broken')
         except Exception as e:
-            logging.error('app.py line 156: '+str(e), exc_info=True)
+            logging.error(str(e), exc_info=True)
             drone.freeze()
             
         finally:

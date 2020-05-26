@@ -51,9 +51,9 @@ while(True):
         for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
             image_data = frame.array
             
-            #image_data = cv2.rotate(image_data, cv2.ROTATE_180)
+            image_data = cv2.rotate(image_data, cv2.ROTATE_180)
             
-            image_data = cv2.cvtColor(image_data, cv2.COLOR_BGR2GRAY)
+            #image_data = cv2.cvtColor(image_data, cv2.COLOR_BGR2GRAY)
             
             Eret_code, jpg_buffer = cv2.imencode(".jpg", image_data, [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY])
 
