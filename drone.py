@@ -107,7 +107,7 @@ class Engine (threading.Thread):
                   self.drone.commands.next = 0
                   self.lastMissionCmndIndex = -1
                   self.drone.mode = VehicleMode("GUIDED")
-                  self.controlTab.togleLights()
+                  #self.controlTab.togleLights()
               
               if self.controlTab.speedX != 0 or self.controlTab.speedY != 0 or self.controlTab.speedZ != 0:
                   msg = self.drone.message_factory.set_position_target_local_ned_encode(

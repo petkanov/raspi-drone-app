@@ -7,8 +7,8 @@ from drone import Drone
 from utils import Utils
 
 
-CONTROL_HOST = '109.121.253.219'
-#CONTROL_HOST = '87.121.112.160'
+#CONTROL_HOST = '109.121.253.219' # home ip
+CONTROL_HOST = '87.121.112.55'    # VPS ip 
 USE_SIMULATOR = False
 
 VIDEO_SERVER_PORT = 1313
