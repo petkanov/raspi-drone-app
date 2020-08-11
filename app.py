@@ -7,9 +7,9 @@ from drone import Drone
 from utils import Utils
 
 
-#CONTROL_HOST = '109.121.253.219' # home ip
-CONTROL_HOST = '87.121.112.55'    # VPS ip 
-USE_SIMULATOR = False
+CONTROL_HOST = '109.121.252.89' # home ip
+#CONTROL_HOST = '87.121.112.55'    # VPS ip 
+USE_SIMULATOR = True
 
 VIDEO_SERVER_PORT = 1313
 DRONE_CLOUD_SERVER_PORT = 1314
@@ -120,7 +120,7 @@ if __name__ == '__main__':
     
     while(True):
         try:
-            drone = Drone("192.168.0.104", 14553, 11111, DRONE_ID, USE_SIMULATOR) # simulator case, 192.168.0.104 is RPi local address
+            drone = Drone("192.168.0.102", 14553, 11111, DRONE_ID, USE_SIMULATOR) # simulator case, 192.168.0.104 is RPi local address
             break
         except Exception as e:
             logging.error(str(e), exc_info=True)
@@ -134,6 +134,7 @@ if __name__ == '__main__':
     controlServerSocket = None 
     serverMessageReceiver = None 
     videoStreamerProc = None
+    audioStreamerProc = None
     
     while drone.isActive:
         try:
@@ -150,7 +151,10 @@ if __name__ == '__main__':
             videoStreamerProc = Popen('/usr/bin/python3 /home/pi/raspi-drone-app/video_streamer.py --port='+str(VIDEO_SERVER_PORT)+
                                                        ' --ip='+CONTROL_HOST + ' --drone_id='+str(DRONE_ID), shell=True)
             logging.info('Video Stream started')
-            
+
+            audioStreamerProc = Popen('/usr/bin/omxplayer /home/pi/Music/slide.mp3', shell=True)
+            logging.info('Audio Stream started')
+           
             serverMessageReceiver = DataReceiver(controlServerSocket, drone)
             serverMessageReceiver.start()
             

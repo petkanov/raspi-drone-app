@@ -9,17 +9,17 @@ import wiringpi
 servoPIN = 18 #only works on this GPIO PIN
 
 # use 'GPIO naming'
-wiringpi.wiringPiSetupGpio()
+#wiringpi.wiringPiSetupGpio()
 
 # set #18 to be a PWM output
-wiringpi.pinMode(servoPIN, wiringpi.GPIO.PWM_OUTPUT)
+#wiringpi.pinMode(servoPIN, wiringpi.GPIO.PWM_OUTPUT)
 
 # set the PWM mode to milliseconds stype
-wiringpi.pwmSetMode(wiringpi.GPIO.PWM_MODE_MS)
+#wiringpi.pwmSetMode(wiringpi.GPIO.PWM_MODE_MS)
 
 # divide down clock
-wiringpi.pwmSetClock(192)
-wiringpi.pwmSetRange(2000)
+#wiringpi.pwmSetClock(192)
+#wiringpi.pwmSetRange(2000)
 
 # value for pwm 60 - 230, in:   wiringpi.pwmWrite([pin value], [pwm value])
 
@@ -34,12 +34,12 @@ class ServoController (threading.Thread):
        self.servoAngle = angle
    
    def run(self):
-      while(True):
+      while(True): """
           try:
               wiringpi.pwmWrite(servoPIN, self.servoAngle)
               time.sleep(self.delay_period) 
           except Exception as e:
               #logging.error("Engine killed: "+str(e))
               print(str(e))
-              break
+              break """
  

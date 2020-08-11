@@ -4,7 +4,12 @@ import time, threading, logging, math
 import ProtoData_pb2 as proto
 import RPi.GPIO as GPIO
 
+import os, signal
+from subprocess import Popen
+
 from servocontroller import ServoController
+
+AUDIO_FILE = "asd.mp3"
 
 dropperPIN = 21
 igniterPIN = 2
@@ -141,7 +146,7 @@ class ControlTab:
         self.servoCamera = ServoController(self.cameraAngle)
         self.servoCamera.start()
         
-        self.startAltitude = 0.5
+        self.startAltitude = 2.5
         self.speedX = 0
         self.speedY = 0
         self.speedZ = 0
@@ -151,6 +156,20 @@ class ControlTab:
         self.rotationAngle = 10
         self.engine = Engine(droneControl, self)
         self.engine.start()
+		
+        self.audio = 0
+		
+    def playAudio(self):
+        if self.audio == 0:	
+           self.audio = Popen('/usr/bin/omxplayer /home/pi/Music/'+str(AUDIO_FILE), shell=True)
+           return
+		   
+        current_process = psutil.Process(self.audio.pid)
+        children = current_process.children(recursive=True)
+        for child in children:
+             if child.pid != os.getpid():
+                 os.kill(child.pid, signal.SIGKILL)
+        os.kill(self.audio.pid, signal.SIGKILL)		
         
     def stopMovement(self):
         self.speedX = 0
