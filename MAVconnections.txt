@@ -1,3 +1,9 @@
+Get and Install Python2.7 from 
+https://www.activestate.com/products/python/downloads/
+
+Run 
+pip install dronekit, dronekit-sitl, mavproxy 
+
 dronekit-sitl copter --home=34.0407, -118.2468, 0, 30
 
 mavproxy.py --master tcp:127.0.0.1:5760 --out udp:127.0.0.1:14551 --out udp:192.168.0.100:14553

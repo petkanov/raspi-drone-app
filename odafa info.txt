@@ -21,4 +21,6 @@ Primary IP address: 87.121.112.55
 
 java -Djava.security.egd=file:/dev/urandom -jar drone-control-station-0.0.1.jar & 
 
-bank card 5633
+On RaspPi move droneapp.service to /lib/systemd/system/ and Run
+sudo systemctl daemon-reload
+sudo systemctl enable droneapp.service
