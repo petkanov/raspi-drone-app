@@ -141,7 +141,7 @@ class ControlTab:
         self.servoCamera = ServoController(self.cameraAngle)
         self.servoCamera.start()
         
-        self.startAltitude = 0.5
+        self.startAltitude = 1.5
         self.speedX = 0
         self.speedY = 0
         self.speedZ = 0
@@ -200,9 +200,10 @@ class ControlTab:
         self.engine.killMotorsNow()
         
     def armAndTakeoff(self):
-        logging.info("Arming")
+        logging.info("Arming") 
         
-        self.drone.mode = VehicleMode("GUIDED")        
+        self.drone.mode = VehicleMode("GUIDED")   
+
         self.drone.armed = True
         time.sleep(1)
     

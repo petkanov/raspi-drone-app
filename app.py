@@ -7,20 +7,21 @@ from drone import Drone
 from utils import Utils
 
 
-#CONTROL_HOST = '109.121.253.219' # home ip
-CONTROL_HOST = '87.121.112.55'    # VPS ip 
-USE_SIMULATOR = False
-
+CONTROL_HOST = '192.168.0.103' # VPS ip where Java App is deployed
 VIDEO_SERVER_PORT = 1313
 DRONE_CLOUD_SERVER_PORT = 1314
 DRONE_ID = str(netifaces.ifaddresses('eth0')[netifaces.AF_LINK][0]['addr']).replace(':','')
 MAX_RECONNECTION_ATTEMPTS = 180
 
-logging.basicConfig(filename='/home/pi/raspi-drone-app/logs/app'+str(time.asctime())+'.log',
-                    filemode='w',
-                    level=logging.INFO,
-                    format='%(asctime)s -%(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+USE_SIMULATOR = True
+SIM_OUT_PORT = 14553
+RPI_LOCAL_ADDR = netifaces.ifaddresses('eth0')[netifaces.AF_INET][0]['addr']
 
+
+logging.basicConfig(filename='./logs/'+str(time.asctime())+'.log',
+                    filemode='w',
+                    level=logging.DEBUG,
+                    format='%(asctime)s %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 
 
 class ConnectionWatchdog (threading.Thread):
@@ -120,7 +121,7 @@ if __name__ == '__main__':
     
     while(True):
         try:
-            drone = Drone("192.168.0.104", 14553, 11111, DRONE_ID, USE_SIMULATOR) # simulator case, 192.168.0.104 is RPi local address
+            drone = Drone(RPI_LOCAL_ADDR, SIM_OUT_PORT, 11111, DRONE_ID, USE_SIMULATOR) # RPI_LOCAL_ADDR, SIM_OUT_PORT for simulator case
             break
         except Exception as e:
             logging.error(str(e), exc_info=True)
